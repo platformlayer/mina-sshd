@@ -19,9 +19,11 @@
 package org.apache.sshd;
 
 import java.io.IOException;
+import java.net.InetSocketAddress;
 import java.security.KeyPair;
 import java.util.Map;
 
+import org.apache.sshd.client.channel.ChannelDirectTcpip;
 import org.apache.sshd.client.channel.ChannelExec;
 import org.apache.sshd.client.channel.ChannelShell;
 import org.apache.sshd.client.channel.ChannelSubsystem;
@@ -71,6 +73,8 @@ public interface ClientSession {
     ChannelExec createExecChannel(String command) throws Exception;
 
     ChannelSubsystem createSubsystemChannel(String subsystem) throws Exception;
+
+    ChannelDirectTcpip createDirectTcpipChannel(InetSocketAddress remote, InetSocketAddress local) throws Exception;
 
     int waitFor(int mask, long timeout);
 

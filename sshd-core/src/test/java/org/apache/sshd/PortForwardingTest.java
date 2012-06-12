@@ -20,6 +20,7 @@ package org.apache.sshd;
 
 import java.io.IOException;
 import java.lang.reflect.Field;
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -46,6 +47,11 @@ import org.apache.mina.core.service.IoAcceptor;
 import org.apache.mina.core.service.IoHandlerAdapter;
 import org.apache.mina.core.session.IoSession;
 import org.apache.mina.transport.socket.nio.NioSocketAcceptor;
+import org.apache.sshd.client.channel.ChannelDirectTcpip;
+import org.apache.sshd.client.channel.ForwardLocalPort;
+import org.apache.sshd.client.channel.SshTunnelSocket;
+import org.apache.sshd.client.future.AuthFuture;
+import org.apache.sshd.client.future.ConnectFuture;
 import org.apache.sshd.common.keyprovider.FileKeyPairProvider;
 import org.apache.sshd.util.BogusForwardingFilter;
 import org.apache.sshd.util.BogusPasswordAuthenticator;
@@ -164,6 +170,60 @@ public class PortForwardingTest {
 
 //        session.setPortForwardingL(8010, "www.amazon.com", 80);
 //        Thread.sleep(1000000);
+    }
+
+    @Test
+    public void testLocalForwardingNativeVirtual() throws Exception {
+        ClientSession session = createNativeSession();
+
+        int forwardedPort = getFreePort();
+
+        InetAddress addr = InetAddress.getByName("localhost");
+        InetSocketAddress remote = new InetSocketAddress(addr, echoPort);
+
+        InetSocketAddress local = new InetSocketAddress(addr, forwardedPort);
+
+        SshTunnelSocket s = new SshTunnelSocket(session, local);
+        s.connect(remote);
+
+        s.getOutputStream().write("Hello".getBytes());
+        s.getOutputStream().flush();
+
+        byte[] buf = new byte[1024];
+        int n = s.getInputStream().read(buf);
+        String res = new String(buf, 0, n);
+        assertEquals("Hello", res);
+
+        s.close();
+
+        session.close(false);
+    }
+
+    @Test
+    public void testLocalForwardingNativeConcrete() throws Exception {
+        ClientSession session = createNativeSession();
+
+        InetAddress addr = InetAddress.getByName("localhost");
+        InetSocketAddress remote = new InetSocketAddress(addr, echoPort);
+
+        ForwardLocalPort forwardLocalPort = new ForwardLocalPort(session, remote);
+
+        forwardLocalPort.start();
+
+        InetSocketAddress local = forwardLocalPort.getLocalSocketAddress();
+
+        Socket s = new Socket();
+        s.connect(local);
+
+        s.getOutputStream().write("Hello".getBytes());
+        s.getOutputStream().flush();
+        byte[] buf = new byte[1024];
+        int n = s.getInputStream().read(buf);
+        String res = new String(buf, 0, n);
+        assertEquals("Hello", res);
+        s.close();
+
+        forwardLocalPort.close();
     }
 
     @Test(timeout = 20000)
@@ -387,6 +447,19 @@ public class PortForwardingTest {
             }
         });
         session.connect();
+        return session;
+    }
+
+    protected ClientSession createNativeSession() throws Exception {
+        SshClient client = SshClient.setUpDefaultClient();
+        client.start();
+        ConnectFuture sessionFuture = client.connect("localhost", sshPort);
+        sessionFuture.await();
+        ClientSession session = sessionFuture.getSession();
+
+        AuthFuture authPassword = session.authPassword("sshd", "sshd");
+        authPassword.await();
+
         return session;
     }
 

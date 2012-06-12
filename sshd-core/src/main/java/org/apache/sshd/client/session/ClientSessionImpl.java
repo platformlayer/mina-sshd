@@ -19,6 +19,7 @@
 package org.apache.sshd.client.session;
 
 import java.io.IOException;
+import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.security.KeyPair;
 import java.util.HashMap;
@@ -33,6 +34,7 @@ import org.apache.sshd.client.UserAuth;
 import org.apache.sshd.client.auth.UserAuthAgent;
 import org.apache.sshd.client.auth.UserAuthPassword;
 import org.apache.sshd.client.auth.UserAuthPublicKey;
+import org.apache.sshd.client.channel.ChannelDirectTcpip;
 import org.apache.sshd.client.channel.ChannelExec;
 import org.apache.sshd.client.channel.ChannelShell;
 import org.apache.sshd.client.channel.ChannelSubsystem;
@@ -234,6 +236,12 @@ public class ClientSessionImpl extends AbstractSession implements ClientSession 
 
     public ChannelSubsystem createSubsystemChannel(String subsystem) throws Exception {
         ChannelSubsystem channel = new ChannelSubsystem(subsystem);
+        registerChannel(channel);
+        return channel;
+    }
+
+    public ChannelDirectTcpip createDirectTcpipChannel(InetSocketAddress remote, InetSocketAddress local) throws Exception {
+        ChannelDirectTcpip channel = new ChannelDirectTcpip(remote, local);
         registerChannel(channel);
         return channel;
     }
