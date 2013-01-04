@@ -80,20 +80,27 @@ public class SshTunnelSocket extends Socket {
                 throws IOException {
             InetSocketAddress remote = (InetSocketAddress) address;
 
+            ChannelDirectTcpip channel;
+            OpenFuture openFuture;
             try {
-                ChannelDirectTcpip channel = session.createDirectTcpipChannel(
-                        remote, localSocketAddress);
-                OpenFuture openFuture = channel.open();
+                channel = session.createDirectTcpipChannel(remote,
+                        localSocketAddress);
+                openFuture = channel.open();
                 if (timeout == 0) {
                     openFuture.await();
                 } else {
                     openFuture.await(timeout);
                 }
-
-                this.channel = channel;
             } catch (Exception e) {
                 throw new IOException("Error connecting channel", e);
             }
+
+            if (openFuture.getException() != null) {
+                throw new IOException("Error connecting channel",
+                        openFuture.getException());
+            }
+
+            this.channel = channel;
         }
 
         @Override
